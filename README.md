@@ -1,3 +1,67 @@
+# 🚀 YOLO26 RKNN Export Adaptation
+
+> **⚡ Optimized for Rockchip NPU Performance**
+
+This repository includes optimized RKNN export support for YOLO26 models, designed for high-performance inference on Rockchip NPU devices.
+
+## ✨ Key Features
+
+- **🎯 Raw Output Export**: Models export without post-processing (no NMS, no sigmoid, no decode)
+- **⚡ CPU Post-processing**: Move decode/NMS operations to CPU for better NPU utilization
+- **🔧 Multi-task Support**: Works with Detection, Segmentation, OBB, and Pose models
+
+## 📋 Export Format
+
+**Detection Model Output Structure:**
+```
+Input:  images [1, 3, 640, 640]
+
+Outputs (6 tensors for 3 detection heads):
+├─ output0_reg [1, 4*reg_max, 80, 80]  # Head 0 regression (raw DFL output)
+├─ output0_cls [1, nc, 80, 80]         # Head 0 classification (raw logits)
+├─ output1_reg [1, 4*reg_max, 40, 40]  # Head 1 regression
+├─ output1_cls [1, nc, 40, 40]         # Head 1 classification
+├─ output2_reg [1, 4*reg_max, 20, 20]  # Head 2 regression
+└─ output2_cls [1, nc, 20, 20]         # Head 2 classification
+```
+
+## 🔨 Usage
+
+```bash
+# Export YOLO26 model to RKNN-compatible ONNX format
+yolo export model=yolo26n.pt format=rknn
+
+# The exported ONNX file can then be converted using RKNN-Toolkit/RKNN-Toolkit2
+# Refer to: https://github.com/airockchip/rknn_model_zoo/tree/main/examples/
+```
+
+## 📝 Implementation Details
+
+### Modified Files
+- **`ultralytics/engine/exporter.py`**: Enhanced `export_rknn()` method
+  - Uses optimal ONNX opset version
+  - Embeds all weights in single file
+  - Sets meaningful output tensor names
+  
+- **`ultralytics/nn/modules/head.py`**: Updated `Detect`, `Segment`, `OBB`, `Pose` classes
+  - Added RKNN-specific forward logic
+  - Returns raw predictions without activation functions
+  
+- **`ultralytics/nn/autobackend.py`**: Added RKNN inference support notes
+
+### Training & Inference
+- ✅ **Training**: Not affected - all modifications only apply during export
+- ✅ **Standard Export**: Other export formats (ONNX, TensorRT, etc.) work as before
+- ✅ **RKNN Export**: Special handling only when `format=rknn`
+
+## 🎯 Performance Benefits
+
+- **Faster Inference**: Post-processing on CPU is faster than on NPU for models
+- **Better NPU Utilization**: NPU focuses on backbone and head computations
+- **Flexible Deployment**: Easy to customize post-processing logic
+
+---
+
 <div align="center">
   <p>
     <a href="https://platform.ultralytics.com/ultralytics/yolo26" target="_blank">

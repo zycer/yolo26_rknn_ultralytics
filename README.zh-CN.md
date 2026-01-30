@@ -1,3 +1,68 @@
+# 🚀 YOLO26 RKNN 导出适配
+
+> **⚡ 专为瑞芯微 NPU 性能优化**
+
+本仓库为 YOLO26 模型提供了优化的 RKNN 导出支持，专为瑞芯微 NPU 设备的高性能推理而设计。
+
+## ✨ 核心特性
+
+- **🎯 原始输出导出**：模型导出时不包含后处理（无 NMS、无 sigmoid、无解码）
+- **⚡ CPU 后处理**：将解码/NMS 操作移至 CPU，提升 NPU 利用率
+- **🔧 多任务支持**：适用于检测、分割、旋转框检测和姿态估计模型
+
+## 📋 导出格式
+
+**检测模型输出结构：**
+```
+输入:  images [1, 3, 640, 640]
+
+输出 (3个检测头共6个张量):
+├─ output0_reg [1, 4*reg_max, 80, 80]  # Head 0 回归输出（原始 DFL 输出）
+├─ output0_cls [1, nc, 80, 80]         # Head 0 分类输出（原始 logits）
+├─ output1_reg [1, 4*reg_max, 40, 40]  # Head 1 回归输出
+├─ output1_cls [1, nc, 40, 40]         # Head 1 分类输出
+├─ output2_reg [1, 4*reg_max, 20, 20]  # Head 2 回归输出
+└─ output2_cls [1, nc, 20, 20]         # Head 2 分类输出
+```
+
+## 🔨 使用方法
+
+```bash
+# 将 YOLO26 模型导出为 RKNN 兼容的 ONNX 格式
+yolo export model=yolo26n.pt format=rknn
+
+# 导出的 ONNX 文件可使用 RKNN-Toolkit/RKNN-Toolkit2 进行转换
+# 参考: https://github.com/airockchip/rknn_model_zoo/tree/main/examples/
+```
+
+## 📝 实现细节
+
+### 修改的文件
+- **`ultralytics/engine/exporter.py`**：增强 `export_rknn()` 方法
+  - 使用最优 ONNX opset 版本
+  - 将所有权重嵌入单个文件
+  - 设置有意义的输出张量名称
+  
+- **`ultralytics/nn/modules/head.py`**：更新 `Detect`、`Segment`、`OBB`、`Pose` 类
+  - 添加 RKNN 特定的前向传播逻辑
+  - 返回未经激活函数处理的原始预测
+  
+- **`ultralytics/nn/autobackend.py`**：添加 RKNN 推理支持说明
+
+### 训练与推理
+- ✅ **训练**：不受影响 - 所有修改仅在导出时生效
+- ✅ **标准导出**：其他导出格式（ONNX、TensorRT 等）保持原样
+- ✅ **RKNN 导出**：仅在 `format=rknn` 时启用特殊处理
+
+## 🎯 性能优势
+
+- **更快的推理**：模型在 CPU 上进行后处理比在 NPU 上更快
+- **更好的 NPU 利用率**：NPU 专注于骨干网络和检测头的计算
+- **灵活的部署**：可轻松自定义后处理逻辑
+
+---
+
+
 <div align="center">
   <p>
     <a href="https://platform.ultralytics.com/ultralytics/yolo26" target="_blank">
